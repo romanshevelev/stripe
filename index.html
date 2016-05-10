@@ -32,7 +32,7 @@
 	}.bind(this)
 
 	ctx.lineWidth = 1;
-	zoom=40;
+	zoom=20;
 
 	// Рамка
 	ctx.strokeStyle = '#555';
@@ -40,12 +40,13 @@
 
 	// Сетка
 	ctx.strokeStyle = '#ccc';
-	for(var i=3;i<=50;i++){
+	for(var i=1;i<=50;i++){
 		line(i,0,i,50);
 		line(0,i,50,i);
 	}
 
 	// Крест
+/*
 	ctx.strokeStyle = '#f00';
 	ctx.beginPath();
 	moveTo(0, 0);
@@ -53,8 +54,11 @@
 	moveTo(10, 0);
 	lineTo(0, 10);
 	ctx.stroke();
-
-	circle(5,5,5)
+*/
+	ctx.strokeStyle = '#000';
+	circle(1,1,1);
+	circle(5,3,1);
+	circle(7,2,1);
 
 })()
 </script>
