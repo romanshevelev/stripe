@@ -1,0 +1,19 @@
+<html>
+<body>
+<canvas id="maincanvas" height="200" width="200"></canvas>
+<script>
+(function(){
+ var elem=document.getElementById("maincanvas");
+ 
+ if (elem && elem.getContext) {
+  var context = elem.getContext('2d');
+  if (context) {
+    context.strokeStyle = '#f00'; // red
+    context.lineWidth = 1;
+    context.strokeRect(0, 0, 200, 200);
+  }
+ }
+})()
+</script>
+</body>
+</html>
