@@ -1,5 +1,4 @@
 <html>
-<<<<<<< HEAD
 <body>
 <canvas id="maincanvas" height="800" width="1000"></canvas>
 <script>
@@ -37,7 +36,3 @@
 </script>
 </body>
 </html>
-=======
-<h1>test</h1>
-</html>
->>>>>>> origin/master
