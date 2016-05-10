@@ -6,31 +6,55 @@
 
 	var elem=document.getElementById("maincanvas");
 	if (elem && elem.getContext) {
-		var context = elem.getContext('2d');
-		if (!context) return;
+		var ctx = elem.getContext('2d');
+		if (!ctx) return;
 	}
 
 	line=function(x0, y0, x1, y1){
-		context.beginPath();
-		context.moveTo(x0*this.zoom+0.5, y0*this.zoom+0.5);
-		context.lineTo(x1*this.zoom+0.5, y1*this.zoom+0.5);
-		context.stroke();
+		ctx.beginPath();
+		moveTo(x0, y0);
+		lineTo(x1, y1);
+		ctx.stroke();
+	}.bind(this);
+
+	lineTo=function(x1, y1){
+		ctx.lineTo(x1*this.zoom+0.5, y1*this.zoom+0.5);
+	}.bind(this);
+
+	moveTo=function(x0, y0){
+		ctx.moveTo(x0*this.zoom+0.5, y0*this.zoom+0.5);
+	}.bind(this);
+
+	circle=function(x0, y0, r){
+		ctx.beginPath();
+		ctx.arc(x0*this.zoom+0.5, y0*this.zoom+0.5, r*zoom, 0, 2*Math.PI);
+		ctx.stroke();
 	}.bind(this)
 
-	context.lineWidth = 1;
+	ctx.lineWidth = 1;
 	zoom=40;
 
 	// Рамка
-	context.strokeStyle = '#555';
-	context.strokeRect(0.5, 0.5, context.canvas.clientWidth-0.5, context.canvas.clientHeight-0.5);
+	ctx.strokeStyle = '#555';
+	ctx.strokeRect(0.5, 0.5, ctx.canvas.clientWidth-0.5, ctx.canvas.clientHeight-0.5);
 
 	// Сетка
-	context.strokeStyle = '#ccc';
-	for(var i=1;i<=100;i++){
-		line(i,0,i,100);
-		line(0,i,100,i);
+	ctx.strokeStyle = '#ccc';
+	for(var i=3;i<=50;i++){
+		line(i,0,i,50);
+		line(0,i,50,i);
 	}
 
+	// Крест
+	ctx.strokeStyle = '#f00';
+	ctx.beginPath();
+	moveTo(0, 0);
+	lineTo(10, 10);
+	moveTo(10, 0);
+	lineTo(0, 10);
+	ctx.stroke();
+
+	circle(5,5,5)
 
 })()
 </script>
