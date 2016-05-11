@@ -3,11 +3,72 @@
 <canvas id="maincanvas" height="800" width="1000"></canvas>
 <script>
 (function(){
-
+	var rad2deg=360/(2*Math.PI);
 	var elem=document.getElementById("maincanvas");
 	if (elem && elem.getContext) {
 		var ctx = elem.getContext('2d');
 		if (!ctx) return;
+	}
+
+	var Point=function(x_,y_){
+		this.x=x_;
+		this.y=y_;
+		return {
+			x:this.x,
+			y:this.y,
+			paint:function(){
+				point(this.x, this.y);
+			},
+			add_vector:function(v){
+				return new Point(this.x+v.dx, this.y+v.dy);
+			},
+			get_vector:function(p0){
+				return new Vector(this.x-p0.x, this.y-p0.y);
+			}
+		}
+	}
+	var Vector=function(dx_,dy_){
+		this.dx=dx_;
+		this.dy=dy_;
+		return {
+			dx:this.dx,
+			dy:this.dy,
+			get_cross_angle:function(v){
+				return Math.acos((this.dx*this.dy+v.dx*v.dy)/(Math.sqrt(this.dx*this.dx+this.dy*this.dy)*Math.sqrt(v.dx*v.dx+v.dy*v.dy)));
+			},
+			reverse:function(){
+				return new Vector(-this.dx, -this.dy);
+			},
+			multi:function(k){
+				return new Vector(this.dx*k, this.dy*k);
+			},
+			paint_at:function(p0, pf=false){
+				if (pf) p0.paint();
+				line(p0.x, p0.y, p0.x+this.dx, p0.y+this.dy);
+			},
+			get_length:function(){
+				return Math.sqrt(this.dx*this.dx+this.dy*this.dy);
+			},
+			add_angle:function(a){
+				var new_a=new Vector(10, 0).get_cross_angle(this)-a;
+				var l=this.get_length();
+				return new Vector(Math.sin(new_a)*l, Math.cos(new_a)*l);
+			}
+		}
+	}
+
+	var Circle=function(p0,r){
+		this.x0=p0.x;
+		this.y0=p0.y;
+		this.radius=r;
+		return {
+			x0:this.x0,
+			y0:this.y0,
+			radius:this.radius,
+			paint:function(){
+				circle(this.x0, this.y0, this.radius);
+			}
+		}
 	}
 
 	line=function(x0, y0, x1, y1){
@@ -31,8 +92,14 @@
 		ctx.stroke();
 	}.bind(this)
 
+	point=function(x0, y0){
+		ctx.beginPath();
+		ctx.arc(x0*this.zoom+0.5, y0*this.zoom+0.5, 3, 0, 2*Math.PI);
+		ctx.fill();
+	}.bind(this)
+
 	ctx.lineWidth = 1;
-	zoom=20;
+	zoom=40;
 
 	// Рамка
 	ctx.strokeStyle = '#555';
@@ -40,25 +107,34 @@
 
 	// Сетка
 	ctx.strokeStyle = '#ccc';
-	for(var i=1;i<=50;i++){
+	for(var i=0;i<=50;i++){
 		line(i,0,i,50);
 		line(0,i,50,i);
 	}
 
-	// Крест
-/*
-	ctx.strokeStyle = '#f00';
-	ctx.beginPath();
-	moveTo(0, 0);
-	lineTo(10, 10);
-	moveTo(10, 0);
-	lineTo(0, 10);
-	ctx.stroke();
-*/
 	ctx.strokeStyle = '#000';
-	circle(1,1,1);
-	circle(5,3,1);
-	circle(7,2,1);
+	p0 = new Point(7,7);
+	c1 = new Circle(p0,3);
+	v0 = new Vector(5, 0);
+	v1 = new Vector(5,-3);
+	v2 = new Vector(3,5);
+
+	p0.paint();
+	c1.paint();
+
+	v0.paint_at(p0, true);
+	v1 = v0.add_angle(5/rad2deg);
+	v1.paint_at(p0);
+	console.log(v1.get_cross_angle(v0)*rad2deg);
+
+	v2 = v0.add_angle(10/rad2deg);
+	v2.paint_at(p0);
+	console.log(v2.get_cross_angle(v1)*rad2deg);
+
+	v3 = v2.add_angle(10/rad2deg);
+	v3.paint_at(p0);
+	console.log(v3.get_cross_angle(v2)*rad2deg);
+
 
 })()
 </script>
