@@ -3,7 +3,8 @@
 <canvas id="maincanvas" height="800" width="1000"></canvas>
 <script>
 (function(){
-	var rad2deg=360/(2*Math.PI);
+	var rad2deg=360.0/(2*Math.PI);
+	var pi2=Math.PI/2;
 	var elem=document.getElementById("maincanvas");
 	if (elem && elem.getContext) {
 		var ctx = elem.getContext('2d');
@@ -27,14 +28,46 @@
 			}
 		}
 	}
-	var Vector=function(dx_,dy_){
+	var Vector=function(dx_=1.0, dy_=0.0){
 		this.dx=dx_;
 		this.dy=dy_;
 		return {
 			dx:this.dx,
 			dy:this.dy,
 			get_cross_angle:function(v){
-				return Math.acos((this.dx*this.dy+v.dx*v.dy)/(Math.sqrt(this.dx*this.dx+this.dy*this.dy)*Math.sqrt(v.dx*v.dx+v.dy*v.dy)));
+				return v.get_angle()-this.get_angle();
+			},
+			get_nearest_angle:function(v){
+				return Math.acos((this.dx*v.dx+this.dy*v.dy)/(Math.sqrt(this.dx*this.dx+this.dy*this.dy)*Math.sqrt(v.dx*v.dx+v.dy*v.dy)));
+			},
+			get_angle:function(){
+				var v1=new Vector().set_angle(0);
+				var v2=new Vector().set_angle(pi2);
+				var v3=new Vector().set_angle(Math.PI);
+				var v4=new Vector().set_angle(Math.PI + pi2);
+
+				var a1=v1.get_nearest_angle(this);
+				var a2=v2.get_nearest_angle(this);
+				var a3=v3.get_nearest_angle(this);
+				var a4=v4.get_nearest_angle(this);
+
+				// OX
+				if (a1==0) return 0;
+				// Квадрант I
+				if (a3>pi2 && a4>pi2) return a1;
+				// OY
+				if (a2==0) return pi2;
+				// Квадрант II
+				if (a1>pi2 && a4>pi2) return pi2+a2;
+				// -OX
+				if (a3==0) return Math.PI;
+				// Квадрант III
+				if (a1>pi2 && a2>pi2) return Math.PI+a3;
+				// -OY
+				if (a4==0) return Math.PI+pi2;
+				// Квадрант IV
+				if (a3>pi2 && a2>pi2) return Math.PI+pi2+a4;
+				return -1;
 			},
 			reverse:function(){
 				return new Vector(-this.dx, -this.dy);
@@ -42,31 +75,103 @@
 			multi:function(k){
 				return new Vector(this.dx*k, this.dy*k);
 			},
+			set_length:function(l){
+				var l0=this.get_length();
+				return new Vector(this.dx*l/l0, this.dy*l/l0);
+			},
 			paint_at:function(p0, pf=false){
 				if (pf) p0.paint();
 				line(p0.x, p0.y, p0.x+this.dx, p0.y+this.dy);
+
+				var p1=p0.add_vector(this);
+
+				var v=this.reverse().set_length(0.4).add_angle(-15/rad2deg);
+				line(p1.x, p1.y, p1.x+v.dx, p1.y+v.dy);
+
+				v=this.reverse().set_length(0.4).add_angle(15/rad2deg);
+				line(p1.x, p1.y, p1.x+v.dx, p1.y+v.dy);
 			},
 			get_length:function(){
 				return Math.sqrt(this.dx*this.dx+this.dy*this.dy);
 			},
 			add_angle:function(a){
-				var new_a=new Vector(10, 0).get_cross_angle(this)-a;
+				var new_a=new Vector().get_cross_angle(this)+a;
 				var l=this.get_length();
-				return new Vector(Math.sin(new_a)*l, Math.cos(new_a)*l);
+				return new Vector(Math.cos(new_a)*l, -Math.sin(new_a)*l);
+			},
+			set_angle:function(a){
+				var l=this.get_length();
+				return new Vector(Math.cos(a)*l, -Math.sin(a)*l);
 			}
 		}
 	}
 
-	var Circle=function(p0,r){
-		this.x0=p0.x;
-		this.y0=p0.y;
-		this.radius=r;
+	var Circle=function(p0, r, d=1){
+		this.center = new Point(p0.x, p0.y);
+		this.radius = r;
+		this.direction = d;
 		return {
-			x0:this.x0,
-			y0:this.y0,
+			center:this.center,
 			radius:this.radius,
-			paint:function(){
-				circle(this.x0, this.y0, this.radius);
+			direction:this.direction,
+			paint:function(d=false){
+				circle(this.center.x, this.center.y, this.radius);
+				if (d) {
+					arc(this.center.x, this.center.y, 0.5, pi2-this.direction*pi2, 3/2*Math.PI*this.direction);
+					var p = new Circle(this.center, 0.5, this.direction).get_angle_point(-3/2*Math.PI*this.direction);
+					new Vector(this.direction,0).multi(0.2).paint_at(p);
+				}
+				return this;
+			},
+			paint_arc:function(a0, a1){
+				arc(this.center.x, this.center.y, this.radius, a0, a1);
+			},
+			get_tangent_angle:function(p, kd=1){
+				v2p=this.center.get_vector(p).reverse();
+				l2p = v2p.get_length();
+				return v2p.get_angle()+kd*Math.acos(this.radius/l2p);
+			},
+			get_angle_point:function(a){
+				return this.center.add_vector(new Vector().set_angle(a).multi(this.radius));
+			},
+			get_tangent_with:function(c0, debug=false){
+				var tmp_strokeStyle = ctx.strokeStyle;
+				var tmp_fillStyle = ctx.fillStyle;
+				ctx.strokeStyle="#999";
+				ctx.fillStyle="#999";
+
+				var c_, p_, tp_, tv_, s_;
+				if (this.radius>c0.radius && this.direction == c0.direction){
+					c_=new Circle(this.center, this.radius-c0.radius, this.direction);
+					if (debug) c_.paint();
+					tp_ = c_.get_angle_point(c_.get_tangent_angle(c0.center, c_.direction));
+					if (debug) tp_.paint();
+					tv_ = tp_.get_vector(c0.center);
+					if (debug) tv_.paint_at(c0.center);
+					s_ = tp_.get_vector(this.center).set_length(this.radius);
+					if (debug) s_.paint_at(this.center);
+					var pp = {p0:null, p1:null};
+					pp.p0 = this.center.add_vector(s_);
+					pp.p1 = pp.p0.add_vector(tv_.reverse());
+				} else if (this.radius<c0.radius && this.direction == c0.direction){
+					c_=new Circle(c0.center, c0.radius-this.radius, c0.direction);
+					if (debug) c_.paint();
+					tp_ = c_.get_angle_point(c_.get_tangent_angle(this.center, -c_.direction));
+					if (debug) tp_.paint();
+					tv_ = tp_.get_vector(this.center);
+					if (debug) tv_.paint_at(this.center);
+					s_ = tp_.get_vector(c0.center).set_length(c0.radius);
+					if (debug) s_.paint_at(c0.center);
+					var pp = {p0:null, p1:null};
+					pp.p1 = c0.center.add_vector(s_);
+					pp.p0 = pp.p1.add_vector(tv_.reverse());
+				}
+
+
+				ctx.strokeStyle = tmp_strokeStyle;
+				ctx.fillStyle = tmp_fillStyle;
+
+				return pp;
 			}
 		}
 	}
@@ -86,10 +191,14 @@
 		ctx.moveTo(x0*this.zoom+0.5, y0*this.zoom+0.5);
 	}.bind(this);
 
-	circle=function(x0, y0, r){
+	arc=function(x0, y0, r, a0, a1){
 		ctx.beginPath();
-		ctx.arc(x0*this.zoom+0.5, y0*this.zoom+0.5, r*zoom, 0, 2*Math.PI);
+		ctx.arc(x0*this.zoom+0.5, y0*this.zoom+0.5, r*zoom, a0, a1);
 		ctx.stroke();
+	}.bind(this)
+
+	circle=function(x0, y0, r){
+		arc(x0, y0, r, 0, 2*Math.PI);
 	}.bind(this)
 
 	point=function(x0, y0){
@@ -99,7 +208,7 @@
 	}.bind(this)
 
 	ctx.lineWidth = 1;
-	zoom=40;
+	zoom=30;
 
 	// Рамка
 	ctx.strokeStyle = '#555';
@@ -107,34 +216,34 @@
 
 	// Сетка
 	ctx.strokeStyle = '#ccc';
+
 	for(var i=0;i<=50;i++){
 		line(i,0,i,50);
 		line(0,i,50,i);
 	}
 
 	ctx.strokeStyle = '#000';
-	p0 = new Point(7,7);
-	c1 = new Circle(p0,3);
-	v0 = new Vector(5, 0);
-	v1 = new Vector(5,-3);
-	v2 = new Vector(3,5);
+	var c1 = new Circle(new Point(10, 17), 4, 1);
+	var c2 = new Circle(new Point(17, 5), 2, 1);
+	var c3 = new Circle(new Point(5, 4), 3, 1);
 
-	p0.paint();
-	c1.paint();
+	c1.center.paint();
+	c2.center.paint();
+	c3.center.paint();
 
-	v0.paint_at(p0, true);
-	v1 = v0.add_angle(5/rad2deg);
-	v1.paint_at(p0);
-	console.log(v1.get_cross_angle(v0)*rad2deg);
+	c1.paint(true);
+	c2.paint(true);
+	c3.paint(true);
 
-	v2 = v0.add_angle(10/rad2deg);
-	v2.paint_at(p0);
-	console.log(v2.get_cross_angle(v1)*rad2deg);
+	pp = c1.get_tangent_with(c2, true);
+	pp.p0.paint();
+	pp.p1.paint();
+	pp.p1.get_vector(pp.p0).paint_at(pp.p0);
 
-	v3 = v2.add_angle(10/rad2deg);
-	v3.paint_at(p0);
-	console.log(v3.get_cross_angle(v2)*rad2deg);
-
+	pp = c2.get_tangent_with(c3, true);
+	pp.p0.paint();
+	pp.p1.paint();
+	pp.p1.get_vector(pp.p0).paint_at(pp.p0);
 
 })()
 </script>
