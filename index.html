@@ -1,14 +1,29 @@
 <html>
 <body>
-<canvas id="maincanvas" height="800" width="1000"></canvas>
+<canvas id="layer0" height="1200" width="1200" style="position:absolute;top:0px;left:0px;z-index:0;"></canvas>
+<canvas id="layer1" height="1200" width="1200" style="position:absolute;top:0px;left:0px;z-index:1;opacity:0.3"></canvas>
 <script>
 (function(){
 	var rad2deg=360.0/(2*Math.PI);
 	var pi2=Math.PI/2;
-	var elem=document.getElementById("maincanvas");
-	if (elem && elem.getContext) {
-		var ctx = elem.getContext('2d');
-		if (!ctx) return;
+	var elem1=document.getElementById("layer0");
+	if (elem1 && elem1.getContext) {
+		var ctx1 = elem1.getContext('2d');
+		if (!ctx1) return;
+	}
+
+	var elem2=document.getElementById("layer1");
+	if (elem2 && elem2.getContext) {
+		var ctx2 = elem2.getContext('2d');
+		if (!ctx2) return;
+	}
+	var ctx;
+	function go_layer1(){
+		ctx=ctx1;
+	}
+
+	function go_layer2(){
+		ctx=ctx2;
 	}
 
 	var Point=function(x_,y_){
@@ -84,8 +99,8 @@
 				line(p0.x, p0.y, p0.x+this.dx, p0.y+this.dy);
 
 				var p1=p0.add_vector(this);
-				var v1=this.reverse().set_length(0.4).add_angle(-17/rad2deg);
-				var v2=this.reverse().set_length(0.4).add_angle(17/rad2deg);
+				var v1=this.reverse().set_length(0.5).add_angle(-17/rad2deg);
+				var v2=this.reverse().set_length(0.5).add_angle(17/rad2deg);
 				triangle(p1.x, p1.y, p1.x+v1.dx, p1.y+v1.dy, p1.x+v2.dx, p1.y+v2.dy);
 			},
 			get_length:function(){
@@ -226,13 +241,20 @@
 		ctx.stroke();
 	}.bind(this)
 
+	pie=function(x0, y0, r, a0, a1){
+		ctx.beginPath();
+		ctx.arc(x0*this.zoom+0.5, y0*this.zoom+0.5, r*zoom, a0, a1);
+		lineTo(x0,y0);
+		ctx.fill();
+	}.bind(this)
+
 	circle=function(x0, y0, r){
 		arc(x0, y0, r, 0, 2*Math.PI);
 	}.bind(this)
 
 	point=function(x0, y0){
 		ctx.beginPath();
-		ctx.arc(x0*this.zoom+0.5, y0*this.zoom+0.5, 3, 0, 2*Math.PI);
+		ctx.arc(x0*this.zoom+0.5, y0*this.zoom+0.5, 2.5, 0, 2*Math.PI);
 		ctx.fill();
 	}.bind(this)
 
@@ -244,8 +266,12 @@
 		ctx.fill();
 	}.bind(this)
 
+
+	zoom=25;
+
+	go_layer1();
+
 	ctx.lineWidth = 1;
-	zoom=30;
 
 	// Рамка
 	ctx.strokeStyle = '#555';
@@ -261,20 +287,71 @@
 
 	ctx.strokeStyle = '#000';
 
-	var stripe=[
-		new Circle(new Point(7, 15), 2, 1)
-		,	new Circle(new Point(15, 12), 2, 1)
-		,	new Circle(new Point(25, 15), 2, -1)
+	var rollers=[
+			new Circle(new Point(10, 10), 1, 1)
+		,	new Circle(new Point(40, 10), 2, 1)
+		,	new Circle(new Point(30, 15), 3, -1)
+		,	new Circle(new Point(30, 25), 2, 1)
 	]
 
-	for(i=0;i<=stripe.length-1;i++){
-		stripe[i].center.paint();
-		stripe[i].paint(true);
+	var path=[];
 
-		pp = stripe[i].get_tangent_with(stripe[(i+1) % stripe.length]);
+	for(i=0;i<=rollers.length-1;i++){
+		rollers[i].center.paint();
+		rollers[i].paint(true);
+
+		var next_roller = rollers[(i+1) % rollers.length];
+		pp = rollers[i].get_tangent_with(next_roller);
 		pp.p0.paint();
 		pp.p1.paint();
 		pp.p1.get_vector(pp.p0).paint_at(pp.p0);
+
+		path.push({
+			type:"line",
+			start:pp.p0,
+			end:pp.p1,
+			vector:pp.p1.get_vector(pp.p0)
+		});
+
+		path.push({
+			type:"arc",
+			start:pp.p1,
+			end:null,
+			circle:next_roller,
+			start_angle:pp.p1.get_vector(next_roller.center).get_angle(),
+			end_angle:null
+		});
+
+		if(path.length>2 && path[path.length-3].type=="arc"){
+			path[path.length-3].end = pp.p0;
+			path[path.length-3].end_angle = pp.p0.get_vector(path[path.length-3].circle.center).get_angle();
+		}
+	}
+	if(path.length>2 && path[path.length-1].type=="arc" && path[0].type=="line"){
+		path[path.length-1].end = path[0].start;
+		path[path.length-1].end_angle = path[0].start.get_vector(path[path.length-1].circle.center).get_angle();
+	}
+	console.log(path);
+
+	go_layer2();
+
+	ctx.strokeStyle = '#0f0';
+	ctx.fillStyle = '#5f5';
+	ctx.lineWidth = 3;
+
+
+	for(i=0;i<path.length;i++){
+		if (path[i].type=='line') line(path[i].start.x, path[i].start.y, path[i].end.x, path[i].end.y);
+		if (path[i].type=='arc'){
+			//arc(path[i].circle.center.x, path[i].circle.center.y, path[i].circle.radius, -path[i].start_angle, -path[i].end_angle);
+			pie(
+				path[i].circle.center.x, 
+				path[i].circle.center.y, 
+				path[i].circle.radius, 
+				path[i].circle.direction==1?-path[i].start_angle:-path[i].end_angle,
+				path[i].circle.direction==1?-path[i].end_angle:-path[i].start_angle
+			);
+		}
 	}
 
 })()
