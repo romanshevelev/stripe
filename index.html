@@ -84,12 +84,9 @@
 				line(p0.x, p0.y, p0.x+this.dx, p0.y+this.dy);
 
 				var p1=p0.add_vector(this);
-
-				var v=this.reverse().set_length(0.4).add_angle(-15/rad2deg);
-				line(p1.x, p1.y, p1.x+v.dx, p1.y+v.dy);
-
-				v=this.reverse().set_length(0.4).add_angle(15/rad2deg);
-				line(p1.x, p1.y, p1.x+v.dx, p1.y+v.dy);
+				var v1=this.reverse().set_length(0.4).add_angle(-17/rad2deg);
+				var v2=this.reverse().set_length(0.4).add_angle(17/rad2deg);
+				triangle(p1.x, p1.y, p1.x+v1.dx, p1.y+v1.dy, p1.x+v2.dx, p1.y+v2.dy);
 			},
 			get_length:function(){
 				return Math.sqrt(this.dx*this.dx+this.dy*this.dy);
@@ -117,9 +114,9 @@
 			paint:function(d=false){
 				circle(this.center.x, this.center.y, this.radius);
 				if (d) {
-					arc(this.center.x, this.center.y, 0.5, pi2-this.direction*pi2, 3/2*Math.PI*this.direction);
-					var p = new Circle(this.center, 0.5, this.direction).get_angle_point(-3/2*Math.PI*this.direction);
-					new Vector(this.direction,0).multi(0.2).paint_at(p);
+					arc(this.center.x, this.center.y, 0.5, -pi2/2+this.direction*pi2/2, 2.5*pi2+pi2/2*this.direction);
+					var p = new Point(this.center.x, this.center.y-0.5);
+					new Vector(this.direction,0).multi(0.3).paint_at(p);
 				}
 				return this;
 			},
@@ -141,7 +138,15 @@
 				ctx.fillStyle="#999";
 
 				var c_, p_, tp_, tv_, s_;
-				if (this.radius>c0.radius && this.direction == c0.direction){
+				if (this.radius==c0.radius && this.direction == c0.direction){
+					tv_ = this.center.get_vector(c0.center);
+					if (debug) tv_.paint_at(c0.center);
+					s_ = tv_.add_angle(-this.direction*pi2).set_length(this.radius);
+					if (debug) s_.paint_at(this.center);
+					var pp = {p0:null, p1:null};
+					pp.p0 = this.center.add_vector(s_);
+					pp.p1 = pp.p0.add_vector(tv_.reverse());
+				} else if(this.radius>c0.radius && this.direction == c0.direction){
 					c_=new Circle(this.center, this.radius-c0.radius, this.direction);
 					if (debug) c_.paint();
 					tp_ = c_.get_angle_point(c_.get_tangent_angle(c0.center, c_.direction));
@@ -155,6 +160,30 @@
 					pp.p1 = pp.p0.add_vector(tv_.reverse());
 				} else if (this.radius<c0.radius && this.direction == c0.direction){
 					c_=new Circle(c0.center, c0.radius-this.radius, c0.direction);
+					if (debug) c_.paint();
+					tp_ = c_.get_angle_point(c_.get_tangent_angle(this.center, -c_.direction));
+					if (debug) tp_.paint();
+					tv_ = tp_.get_vector(this.center);
+					if (debug) tv_.paint_at(this.center);
+					s_ = tp_.get_vector(c0.center).set_length(c0.radius);
+					if (debug) s_.paint_at(c0.center);
+					var pp = {p0:null, p1:null};
+					pp.p1 = c0.center.add_vector(s_);
+					pp.p0 = pp.p1.add_vector(tv_.reverse());
+				} else if (this.radius>=c0.radius && this.direction != c0.direction){
+					c_=new Circle(this.center, this.radius+c0.radius, this.direction);
+					if (debug) c_.paint();
+					tp_ = c_.get_angle_point(c_.get_tangent_angle(c0.center, c_.direction));
+					if (debug) tp_.paint();
+					tv_ = tp_.get_vector(c0.center);
+					if (debug) tv_.paint_at(c0.center);
+					s_ = tp_.get_vector(this.center).set_length(this.radius);
+					if (debug) s_.paint_at(this.center);
+					var pp = {p0:null, p1:null};
+					pp.p0 = this.center.add_vector(s_);
+					pp.p1 = pp.p0.add_vector(tv_.reverse());
+				} else if (this.radius<c0.radius && this.direction != c0.direction){
+					c_=new Circle(c0.center, c0.radius+this.radius, c0.direction);
 					if (debug) c_.paint();
 					tp_ = c_.get_angle_point(c_.get_tangent_angle(this.center, -c_.direction));
 					if (debug) tp_.paint();
@@ -207,6 +236,14 @@
 		ctx.fill();
 	}.bind(this)
 
+	triangle=function(x0, y0, x1, y1, x2, y2){
+		ctx.beginPath();
+		moveTo(x0, y0);
+		lineTo(x1, y1);
+		lineTo(x2, y2);
+		ctx.fill();
+	}.bind(this)
+
 	ctx.lineWidth = 1;
 	zoom=30;
 
@@ -223,27 +260,22 @@
 	}
 
 	ctx.strokeStyle = '#000';
-	var c1 = new Circle(new Point(10, 17), 4, 1);
-	var c2 = new Circle(new Point(17, 5), 2, 1);
-	var c3 = new Circle(new Point(5, 4), 3, 1);
 
-	c1.center.paint();
-	c2.center.paint();
-	c3.center.paint();
+	var stripe=[
+		new Circle(new Point(7, 15), 2, 1)
+		,	new Circle(new Point(15, 12), 2, 1)
+		,	new Circle(new Point(25, 15), 2, -1)
+	]
 
-	c1.paint(true);
-	c2.paint(true);
-	c3.paint(true);
+	for(i=0;i<=stripe.length-1;i++){
+		stripe[i].center.paint();
+		stripe[i].paint(true);
 
-	pp = c1.get_tangent_with(c2, true);
-	pp.p0.paint();
-	pp.p1.paint();
-	pp.p1.get_vector(pp.p0).paint_at(pp.p0);
-
-	pp = c2.get_tangent_with(c3, true);
-	pp.p0.paint();
-	pp.p1.paint();
-	pp.p1.get_vector(pp.p0).paint_at(pp.p0);
+		pp = stripe[i].get_tangent_with(stripe[(i+1) % stripe.length]);
+		pp.p0.paint();
+		pp.p1.paint();
+		pp.p1.get_vector(pp.p0).paint_at(pp.p0);
+	}
 
 })()
 </script>
