@@ -1,58 +1,78 @@
 <html>
 <body>
-<canvas id="layer0" height="800" width="1200" style="position:absolute;top:0px;left:0px;z-index:0;"></canvas>
-<canvas id="layer1" height="800" width="1200" style="position:absolute;top:0px;left:0px;z-index:1;opacity:0.3"></canvas>
-<canvas id="layer2" height="800" width="1200" style="position:absolute;top:0px;left:0px;z-index:2;opacity:1"></canvas>
+<div id="container" width="1200" height="800" style="position:absolute;top:0;left:0;height:800px;width:1200px;"></div>
 <script>
-(function(){
-	var rad2deg=360.0/(2*Math.PI);
-	var pi2=Math.PI/2;
+window.pi2=Math.PI/2;
+window.rad2deg=360.0/(2*Math.PI);
 
-	var elem1=document.getElementById("layer0");
-	if (elem1 && elem1.getContext) {
-		var ctx1 = elem1.getContext('2d');
-		if (!ctx1) return;
+window.RSH={};
+
+window.RSH.primitives={
+	line:function(ctx, x0, y0, x1, y1, zoom=1){
+		ctx.beginPath();
+		this.moveTo(ctx, x0, y0, zoom);
+		this.lineTo(ctx, x1, y1, zoom);
+		ctx.stroke();
+	},
+	lineTo:function(ctx, x1, y1, zoom=1){
+		ctx.lineTo(x1*zoom+0.5, y1*zoom+0.5);
+	},
+	moveTo:function(ctx, x0, y0, zoom=1){
+		ctx.moveTo(x0*zoom+0.5, y0*zoom+0.5);
+	},
+	arc:function(ctx, x0, y0, r, a0, a1, zoom=1){
+		ctx.beginPath();
+		ctx.arc(x0*zoom+0.5, y0*zoom+0.5, r*zoom, a0, a1);
+		ctx.stroke();
+	},
+	pie:function(ctx, x0, y0, r, a0, a1, zoom=1){
+		ctx.beginPath();
+		ctx.arc(x0*zoom+0.5, y0*zoom+0.5, r*zoom, a0, a1);
+		this.lineTo(ctx,x0,y0,zoom);
+		ctx.fill();
+	},
+	circle:function(ctx, x0, y0, r, zoom=1){
+		this.arc(ctx, x0, y0, r, 0, 2*Math.PI, zoom);
+	},
+	point:function(ctx, x0, y0, zoom=1){
+		ctx.beginPath();
+		ctx.arc(x0*zoom+0.5, y0*zoom+0.5, 2.5, 0, 2*Math.PI);
+		ctx.fill();
+	},
+	triangle:function(ctx, x0, y0, x1, y1, x2, y2, zoom=1){
+		ctx.beginPath();
+		this.moveTo(ctx, x0, y0, zoom);
+		this.lineTo(ctx, x1, y1, zoom);
+		this.lineTo(ctx, x2, y2, zoom);
+		ctx.fill();
 	}
+}
 
-	var elem2=document.getElementById("layer1");
-	if (elem2 && elem2.getContext) {
-		var ctx2 = elem2.getContext('2d');
-		if (!ctx2) return;
-	}
-
-	var elem3=document.getElementById("layer2");
-	if (elem3 && elem3.getContext) {
-		var ctx3 = elem3.getContext('2d');
-		if (!ctx3) return;
-	}
-
-
-	var ctx;
-	function go_layer1(){ctx=ctx1;}
-	function go_layer2(){ctx=ctx2;}
-	function go_layer3(){ctx=ctx3;}
-
-	var Point=function(x_,y_){
+window.RSH.Point=function(x_,y_,zoom_=1){
 		this.x=x_;
 		this.y=y_;
+		this.zoom=zoom_;
 		return {
+			zoom:this.zoom,
 			x:this.x,
 			y:this.y,
-			paint:function(){
-				point(this.x, this.y);
+			paint:function(ctx){
+				window.RSH.primitives.point(ctx, this.x, this.y, this.zoom);
 			},
 			add_vector:function(v){
-				return new Point(this.x+v.dx, this.y+v.dy);
+				return new window.RSH.Point(this.x+v.dx, this.y+v.dy, this.zoom);
 			},
 			get_vector:function(p0){
-				return new Vector(this.x-p0.x, this.y-p0.y);
+				return new window.RSH.Vector(this.x-p0.x, this.y-p0.y, this.zoom);
 			}
 		}
 	}
-	var Vector=function(dx_=1.0, dy_=0.0){
+window.RSH.Vector=function(dx_=1.0, dy_=0.0, zoom_=1){
 		this.dx=dx_;
 		this.dy=dy_;
+		this.zoom=zoom_;
 		return {
+			zoom:this.zoom,
 			dx:this.dx,
 			dy:this.dy,
 			get_cross_angle:function(v){
@@ -62,10 +82,11 @@
 				return Math.acos((this.dx*v.dx+this.dy*v.dy)/(Math.sqrt(this.dx*this.dx+this.dy*this.dy)*Math.sqrt(v.dx*v.dx+v.dy*v.dy)));
 			},
 			get_angle:function(){
-				var v1=new Vector().set_angle(0);
-				var v2=new Vector().set_angle(pi2);
-				var v3=new Vector().set_angle(Math.PI);
-				var v4=new Vector().set_angle(Math.PI + pi2);
+				Vector = window.RSH.Vector;
+				var v1=new Vector(1,0,this.zoom).set_angle(0);
+				var v2=new Vector(1,0,this.zoom).set_angle(pi2);
+				var v3=new Vector(1,0,this.zoom).set_angle(Math.PI);
+				var v4=new Vector(1,0,this.zoom).set_angle(Math.PI + pi2);
 
 				var a1=v1.get_nearest_angle(this);
 				var a2=v2.get_nearest_angle(this);
@@ -91,53 +112,68 @@
 				return -1;
 			},
 			reverse:function(){
-				return new Vector(-this.dx, -this.dy);
+				return new window.RSH.Vector(-this.dx, -this.dy, this.zoom);
 			},
 			multi:function(k){
-				return new Vector(this.dx*k, this.dy*k);
+				return new window.RSH.Vector(this.dx*k, this.dy*k, this.zoom);
 			},
 			set_length:function(l){
 				var l0=this.get_length();
-				return new Vector(this.dx*l/l0, this.dy*l/l0);
+				return new window.RSH.Vector(this.dx*l/l0, this.dy*l/l0, this.zoom);
 			},
-			paint_at:function(p0, pf=false){
-				if (pf) p0.paint();
-				line(p0.x, p0.y, p0.x+this.dx, p0.y+this.dy);
+			paint_at:function(ctx, p0, pf=false, af=true){
+				if (pf) p0.paint(ctx);
+				window.RSH.primitives.line(ctx, p0.x, p0.y, p0.x+this.dx, p0.y+this.dy, this.zoom);
 
-				var p1=p0.add_vector(this);
-				var v1=this.reverse().set_length(0.5).add_angle(-17/rad2deg);
-				var v2=this.reverse().set_length(0.5).add_angle(17/rad2deg);
-				triangle(p1.x, p1.y, p1.x+v1.dx, p1.y+v1.dy, p1.x+v2.dx, p1.y+v2.dy);
+				if (af) {
+					var p1=p0.add_vector(this);
+					var v1=this.reverse().set_length(0.5).add_angle(-17/rad2deg);
+					var v2=this.reverse().set_length(0.5).add_angle(17/rad2deg);
+					window.RSH.primitives.triangle(ctx, p1.x, p1.y, p1.x+v1.dx, p1.y+v1.dy, p1.x+v2.dx, p1.y+v2.dy, this.zoom);
+				}
 			},
 			get_length:function(){
 				return Math.sqrt(this.dx*this.dx+this.dy*this.dy);
 			},
 			add_angle:function(a){
-				var new_a=new Vector().get_cross_angle(this)+a;
+				var new_a=new window.RSH.Vector(1, 0, this.zoom).get_cross_angle(this)+a;
 				var l=this.get_length();
-				return new Vector(Math.cos(new_a)*l, -Math.sin(new_a)*l);
+				return new window.RSH.Vector(Math.cos(new_a)*l, -Math.sin(new_a)*l, this.zoom);
 			},
 			set_angle:function(a){
 				var l=this.get_length();
-				return new Vector(Math.cos(a)*l, -Math.sin(a)*l);
+				return new window.RSH.Vector(Math.cos(a)*l, -Math.sin(a)*l, this.zoom);
 			}
 		}
 	}
 
-	var Circle=function(p0, r, d=1){
-		this.center = new Point(p0.x, p0.y);
+window.RSH.Circle=function(p0, r, d=1, zoom_, debug_ctx_){
+		var Point = window.RSH.Point;
+		var Vector = window.RSH.Vector;
+		this.center = new Point(p0.x, p0.y, zoom_);
 		this.radius = r;
 		this.direction = d;
+		this.zoom=zoom_;
+
+		var elem3=document.getElementById("layer2");
+		if (elem3 && elem3.getContext) {
+			var ctx3 = elem3.getContext('2d');
+			if (!ctx3) return;
+		}
+
+		this.debug_ctx=ctx3;
 		return {
+			zoom:this.zoom,
+			debug_ctx:this.debug_ctx,
 			center:this.center,
 			radius:this.radius,
 			direction:this.direction,
-			paint:function(d=false){
-				circle(this.center.x, this.center.y, this.radius);
+			paint:function(ctx, d=false){
+				window.RSH.primitives.circle(ctx, this.center.x, this.center.y, this.radius, this.zoom);
 				if (d) {
-					arc(this.center.x, this.center.y, 0.5, -pi2/2+this.direction*pi2/2, 2.5*pi2+pi2/2*this.direction);
-					var p = new Point(this.center.x, this.center.y-0.5);
-					new Vector(this.direction,0).multi(0.3).paint_at(p);
+					window.RSH.primitives.arc(ctx, this.center.x, this.center.y, 0.5, -pi2/2+this.direction*pi2/2, 2.5*pi2+pi2/2*this.direction, this.zoom);
+					var p = new Point(this.center.x, this.center.y-0.5, this.zoom);
+					new Vector(this.direction,0, this.zoom).multi(0.3).paint_at(ctx, p);
 				}
 				return this;
 			},
@@ -149,13 +185,13 @@
 			},
 			get_arc_len:function(p0, p1, debug=false){
 				var v0=p0.get_vector(this.center);
-				if (debug) v0.paint_at(this.center);
+				if (debug) v0.paint_at(debug_ctx, this.center);
 				var v1=p1.get_vector(this.center);
-				if (debug) v1.paint_at(this.center);
+				if (debug) v1.paint_at(debug_ctx, this.center);
 				
 				var a0=v0.get_angle();
 				var a1=v1.get_angle();
-				if (debug) this.paint_arc(a0,a1);
+				if (debug) this.paint_arc(debug_ctx, a0,a1);
 				var da;
 				if (this.direction==1){
 					if (a0<a1) a0=a0+2*Math.PI;
@@ -167,11 +203,11 @@
 
 				return Math.abs(da*this.radius);
 			},
-			paint_arc:function(a0, a1){
+			paint_arc:function(ctx, a0, a1){
 				if (this.direction==1){
-					arc(this.center.x, this.center.y, this.radius, -a0, -a1);	
+					window.RSH.primitives.arc(ctx, this.center.x, this.center.y, this.radius, -a0, -a1, this.zoom);
 				} else {
-					arc(this.center.x, this.center.y, this.radius, -a1, -a0);
+					window.RSH.primitives.arc(ctx, this.center.x, this.center.y, this.radius, -a1, -a0, this.zoom);
 				}
 			},
 			get_tangent_angle:function(p, kd=1){
@@ -180,9 +216,11 @@
 				return v2p.get_angle()+kd*Math.acos(this.radius/l2p);
 			},
 			get_angle_point:function(a){
-				return this.center.add_vector(new Vector().set_angle(a).multi(this.radius));
+				return this.center.add_vector(new Vector(1, 0, this.zoom).set_angle(a).multi(this.radius));
 			},
 			get_tangent_with:function(c0, debug=false){
+				var Circle = window.RSH.Circle;
+				var ctx=this.debug_ctx;
 				var tmp_strokeStyle = ctx.strokeStyle;
 				var tmp_fillStyle = ctx.fillStyle;
 				ctx.strokeStyle="#999";
@@ -191,61 +229,61 @@
 				var c_, p_, tp_, tv_, s_;
 				if (this.radius==c0.radius && this.direction == c0.direction){
 					tv_ = this.center.get_vector(c0.center);
-					if (debug) tv_.paint_at(c0.center);
+					if (debug) tv_.paint_at(ctx, c0.center);
 					s_ = tv_.add_angle(-this.direction*pi2).set_length(this.radius);
-					if (debug) s_.paint_at(this.center);
+					if (debug) s_.paint_at(ctx, this.center);
 					var pp = {p0:null, p1:null};
 					pp.p0 = this.center.add_vector(s_);
 					pp.p1 = pp.p0.add_vector(tv_.reverse());
 				} else if(this.radius>c0.radius && this.direction == c0.direction){
-					c_=new Circle(this.center, this.radius-c0.radius, this.direction);
-					if (debug) c_.paint();
+					c_=new Circle(this.center, this.radius-c0.radius, this.direction, this.zoom);
+					if (debug) c_.paint(ctx);
 					tp_ = c_.get_angle_point(c_.get_tangent_angle(c0.center, c_.direction));
-					if (debug) tp_.paint();
+					if (debug) tp_.paint(ctx);
 					tv_ = tp_.get_vector(c0.center);
-					if (debug) tv_.paint_at(c0.center);
+					if (debug) tv_.paint_at(ctx, c0.center);
 					s_ = tp_.get_vector(this.center).set_length(this.radius);
 					if (debug) s_.paint_at(this.center);
 					var pp = {p0:null, p1:null};
 					pp.p0 = this.center.add_vector(s_);
 					pp.p1 = pp.p0.add_vector(tv_.reverse());
 				} else if (this.radius<c0.radius && this.direction == c0.direction){
-					c_=new Circle(c0.center, c0.radius-this.radius, c0.direction);
-					if (debug) c_.paint();
+					c_=new Circle(c0.center, c0.radius-this.radius, c0.direction, this.zoom);
+					if (debug) c_.paint(ctx);
 					tp_ = c_.get_angle_point(c_.get_tangent_angle(this.center, -c_.direction));
-					if (debug) tp_.paint();
+					if (debug) tp_.paint(ctx);
 					tv_ = tp_.get_vector(this.center);
-					if (debug) tv_.paint_at(this.center);
+					if (debug) tv_.paint_at(ctx, this.center);
 					s_ = tp_.get_vector(c0.center).set_length(c0.radius);
-					if (debug) s_.paint_at(c0.center);
+					if (debug) s_.paint_at(ctx, c0.center);
 					var pp = {p0:null, p1:null};
 					pp.p1 = c0.center.add_vector(s_);
 					pp.p0 = pp.p1.add_vector(tv_.reverse());
 				} else if (this.radius>=c0.radius && this.direction != c0.direction){
-					c_=new Circle(this.center, this.radius+c0.radius, this.direction);
-					if (debug) c_.paint();
+					c_=new Circle(this.center, this.radius+c0.radius, this.direction, this.zoom);
+					if (debug) c_.paint(ctx);
 					tp_ = c_.get_angle_point(c_.get_tangent_angle(c0.center, c_.direction));
-					if (debug) tp_.paint();
+					if (debug) tp_.paint(ctx);
 					tv_ = tp_.get_vector(c0.center);
-					if (debug) tv_.paint_at(c0.center);
+					if (debug) tv_.paint_at(ctx, c0.center);
 					s_ = tp_.get_vector(this.center).set_length(this.radius);
-					if (debug) s_.paint_at(this.center);
+					if (debug) s_.paint_at(ctx, this.center);
 					var pp = {p0:null, p1:null};
 					pp.p0 = this.center.add_vector(s_);
 					pp.p1 = pp.p0.add_vector(tv_.reverse());
 				} else if (this.radius<c0.radius && this.direction != c0.direction){
-					c_=new Circle(c0.center, c0.radius+this.radius, c0.direction);
-					if (debug) c_.paint();
+					c_=new Circle(c0.center, c0.radius+this.radius, c0.direction, this.zoom);
+					if (debug) c_.paint(ctx);
 					tp_ = c_.get_angle_point(c_.get_tangent_angle(this.center, -c_.direction));
-					if (debug) tp_.paint();
+					if (debug) tp_.paint(ctx);
 					tv_ = tp_.get_vector(this.center);
-					if (debug) tv_.paint_at(this.center);
+					if (debug) tv_.paint_at(ctx, this.center);
 					s_ = tp_.get_vector(c0.center).set_length(c0.radius);
-					if (debug) s_.paint_at(c0.center);
+					if (debug) s_.paint_at(ctx, c0.center);
 					var pp = {p0:null, p1:null};
 					pp.p1 = c0.center.add_vector(s_);
 					pp.p0 = pp.p1.add_vector(tv_.reverse());
-				}
+				};
 
 
 				ctx.strokeStyle = tmp_strokeStyle;
@@ -253,170 +291,185 @@
 
 				return pp;
 			}
+		};
+	}
+
+window.RSH.Conwayer=function(container, roller_coords){
+
+	var rad2deg=360.0/(2*Math.PI);
+	var pi2=Math.PI/2;
+
+	function get_ctx(container, id){
+		var elem=document.createElement("canvas");
+		elem.id=id;
+		elem.height=container.clientHeight;
+		elem.width=container.clientWidth;
+		elem.style="position:absolute;top:0px;left:0px;";
+		container.appendChild(elem);
+		return elem.getContext('2d');
+	}
+	
+	var ctxs=[];
+	ctxs[0] = get_ctx(container,"layer0");
+	ctxs[1] = get_ctx(container,"layer1");
+	ctxs[2] = get_ctx(container,"layer2");
+	ctxs[3] = get_ctx(container,"debug_layer");
+
+	ctxs[1].globalAlpha = 0.3;
+
+	var ctx;
+	function go_layer1(){ctx=ctxs[0];}
+	function go_layer2(){ctx=ctxs[1];}
+	function go_layer3(){ctx=ctxs[2];}
+
+
+	var zoom=13;
+
+	var paint_grid=function(ctx){
+		var tmp_strokeStyle=ctx.strokeStyle;
+		var tmp_lineWidth = ctx.lineWidth;
+		// Рамка
+		ctx.lineWidth = 1;
+		ctx.strokeStyle = '#555';
+		ctx.strokeRect(0.5, 0.5, ctx.canvas.clientWidth-0.5, ctx.canvas.clientHeight-0.5);
+
+		// Сетка
+		ctx.strokeStyle = '#ccc';
+
+		for(var i=0;i<=100;i=i+2){
+			window.RSH.primitives.line(ctx,i,0,i,100,zoom);
+			window.RSH.primitives.line(ctx,0,i,100,i,zoom);
 		}
+
+		ctx.strokeStyle = tmp_strokeStyle;
+		ctx.lineWidth = tmp_lineWidth;
 	}
 
-	line=function(x0, y0, x1, y1){
-		ctx.beginPath();
-		moveTo(x0, y0);
-		lineTo(x1, y1);
-		ctx.stroke();
-	}.bind(this);
-
-	lineTo=function(x1, y1){
-		ctx.lineTo(x1*this.zoom+0.5, y1*this.zoom+0.5);
-	}.bind(this);
-
-	moveTo=function(x0, y0){
-		ctx.moveTo(x0*this.zoom+0.5, y0*this.zoom+0.5);
-	}.bind(this);
-
-	arc=function(x0, y0, r, a0, a1){
-		ctx.beginPath();
-		ctx.arc(x0*this.zoom+0.5, y0*this.zoom+0.5, r*zoom, a0, a1);
-		ctx.stroke();
-	}.bind(this)
-
-	pie=function(x0, y0, r, a0, a1){
-		ctx.beginPath();
-		ctx.arc(x0*this.zoom+0.5, y0*this.zoom+0.5, r*zoom, a0, a1);
-		lineTo(x0,y0);
-		ctx.fill();
-	}.bind(this)
-
-	circle=function(x0, y0, r){
-		arc(x0, y0, r, 0, 2*Math.PI);
-	}.bind(this)
-
-	point=function(x0, y0){
-		ctx.beginPath();
-		ctx.arc(x0*this.zoom+0.5, y0*this.zoom+0.5, 2.5, 0, 2*Math.PI);
-		ctx.fill();
-	}.bind(this)
-
-	triangle=function(x0, y0, x1, y1, x2, y2){
-		ctx.beginPath();
-		moveTo(x0, y0);
-		lineTo(x1, y1);
-		lineTo(x2, y2);
-		ctx.fill();
-	}.bind(this)
-
-
-	zoom=30;
-
-	go_layer1();
-
-	ctx.lineWidth = 1;
-
-	// Рамка
-	ctx.strokeStyle = '#555';
-	ctx.strokeRect(0.5, 0.5, ctx.canvas.clientWidth-0.5, ctx.canvas.clientHeight-0.5);
-
-	// Сетка
-	ctx.strokeStyle = '#ccc';
-
-	for(var i=0;i<=50;i++){
-		line(i,0,i,50);
-		line(0,i,50,i);
-	}
-
-	ctx.strokeStyle = '#000';
-
+	var Point = window.RSH.Point;
+	var Circle = window.RSH.Circle;
+	/*
 	var rollers=[
 	[
-			new Circle(new Point(10, 10), 2, 1)
-		,	new Circle(new Point(13, 8), 1, -1)
-		,	new Circle(new Point(15, 5), 2, 1)
-		,	new Circle(new Point(17, 8), 1, -1)
-		,	new Circle(new Point(20, 10), 2, 1)
-		,	new Circle(new Point(17, 12), 1, -1)
-		,	new Circle(new Point(15, 15), 2, 1)
-		,	new Circle(new Point(13, 12), 1, -1)
+			new Circle(new Point(10, 10, zoom), 2, 1, zoom)
+		,	new Circle(new Point(13, 8, zoom), 1, -1, zoom)
+		,	new Circle(new Point(15, 5, zoom), 2, 1, zoom)
+		,	new Circle(new Point(17, 8, zoom), 1, -1, zoom)
+		,	new Circle(new Point(20, 10, zoom), 2, 1, zoom)
+		,	new Circle(new Point(17, 12, zoom), 1, -1, zoom)
+		,	new Circle(new Point(15, 15, zoom), 2, 1, zoom)
+		,	new Circle(new Point(13, 12, zoom), 1, -1, zoom)
 	],
 	[
-			new Circle(new Point(11, 12), 2, 1)
-		,	new Circle(new Point(13, 8), 1, -1)
-		,	new Circle(new Point(15, 5), 2, 1)
-		,	new Circle(new Point(17, 8), 1, -1)
-		,	new Circle(new Point(19, 12), 2, 1)
-		,	new Circle(new Point(15, 11), 1, -1)
+			new Circle(new Point(11, 12, zoom), 2, 1, zoom)
+		,	new Circle(new Point(13, 8, zoom), 1, -1, zoom)
+		,	new Circle(new Point(15, 5, zoom), 2, 1, zoom)
+		,	new Circle(new Point(17, 8, zoom), 1, -1, zoom)
+		,	new Circle(new Point(19, 12, zoom), 2, 1, zoom)
+		,	new Circle(new Point(15, 11, zoom), 1, -1, zoom)
 	],
 	[
-			new Circle(new Point(4, 8), 2, 1)
-		,	new Circle(new Point(25, 7), 1, 1)
-		,	new Circle(new Point(19.5, 7.5), 0.5, 1)
-		,	new Circle(new Point(18, 8), 1, -1)
-		,	new Circle(new Point(19, 12), 1, 1)
-		,	new Circle(new Point(13, 8), 1, -1)
-		,	new Circle(new Point(14, 12), 1, 1)
-		,	new Circle(new Point(8, 8), 1, -1)
-		,	new Circle(new Point(9, 12), 1, 1)
-		,	new Circle(new Point(6, 10.5), 0.5, -1)
+			new Circle(new Point(4, 8, zoom), 2, 1, zoom)
+		,	new Circle(new Point(25, 7, zoom), 1, 1, zoom)
+		,	new Circle(new Point(19.5, 7.5, zoom), 0.5, 1, zoom)
+		,	new Circle(new Point(18, 8, zoom), 1, -1, zoom)
+		,	new Circle(new Point(19, 12, zoom), 1, 1, zoom)
+		,	new Circle(new Point(13, 8, zoom), 1, -1, zoom)
+		,	new Circle(new Point(14, 12, zoom), 1, 1, zoom)
+		,	new Circle(new Point(8, 8, zoom), 1, -1, zoom)
+		,	new Circle(new Point(9, 12, zoom), 1, 1, zoom)
+		,	new Circle(new Point(6, 10.5, zoom), 0.5, -1, zoom)
 	]
 	][2]
+	*/
+	var rollers=[];
+	for (var i=0;i<=roller_coords.length-1;i++)
+		rollers.push(new Circle(new Point(roller_coords[i][0], roller_coords[i][1], zoom), roller_coords[i][2], roller_coords[i][3], zoom))
 
 	var path=[];
 
-	for(i=0;i<=rollers.length-1;i++){
-		rollers[i].center.paint();
-		rollers[i].paint(true);
+	var fill_path=function(rollers){
+		var path=[];
+		for(var i=0;i<=rollers.length-1;i++){
 
-		var next_roller = rollers[(i+1) % rollers.length];
-		pp = rollers[i].get_tangent_with(next_roller);
-		pp.p0.paint();
-		pp.p1.paint();
-		pp.p1.get_vector(pp.p0).paint_at(pp.p0);
+			var next_roller = rollers[(i+1) % rollers.length];
+			pp = rollers[i].get_tangent_with(next_roller);
 
-		path.push({
-			type:"line",
-			start:pp.p0,
-			end:pp.p1,
-			vector:pp.p1.get_vector(pp.p0)
-		});
+			path.push({
+				type:"line",
+				start:pp.p0,
+				end:pp.p1,
+				vector:pp.p1.get_vector(pp.p0)
+			});
 
-		path.push({
-			type:"arc",
-			start:pp.p1,
-			end:null,
-			circle:next_roller,
-			start_angle:pp.p1.get_vector(next_roller.center).get_angle(),
-			start_deg:pp.p1.get_vector(next_roller.center).get_angle()*rad2deg,
-			end_angle:null,
-			end_deg:null
-		});
+			path.push({
+				type:"arc",
+				start:pp.p1,
+				end:null,
+				circle:next_roller,
+				start_angle:pp.p1.get_vector(next_roller.center).get_angle(),
+				start_deg:pp.p1.get_vector(next_roller.center).get_angle()*rad2deg,
+				end_angle:null,
+				end_deg:null
+			});
 
-		if(path.length>2 && path[path.length-3].type=="arc"){
-			path[path.length-3].end = pp.p0;
-			path[path.length-3].end_angle = pp.p0.get_vector(path[path.length-3].circle.center).get_angle();
-			path[path.length-3].end_deg = pp.p0.get_vector(path[path.length-3].circle.center).get_angle()*rad2deg;
+			if(path.length>2 && path[path.length-3].type=="arc"){
+				path[path.length-3].end = pp.p0;
+				path[path.length-3].end_angle = pp.p0.get_vector(path[path.length-3].circle.center).get_angle();
+				path[path.length-3].end_deg = pp.p0.get_vector(path[path.length-3].circle.center).get_angle()*rad2deg;
+			}
+		}
+		if(path.length>2 && path[path.length-1].type=="arc" && path[0].type=="line"){
+			path[path.length-1].end = path[0].start;
+			path[path.length-1].end_angle = path[0].start.get_vector(path[path.length-1].circle.center).get_angle();
+			path[path.length-1].end_deg = path[0].start.get_vector(path[path.length-1].circle.center).get_angle()*rad2deg;
+		}
+		return path;
+	};
+	
+	var path=fill_path(rollers);
+	console.log(path);
+
+	var paint_rollers=function(ctx){
+		var rollers=this.rollers;
+		for(var i=0;i<=rollers.length-1;i++){
+			rollers[i].center.paint(ctx);
+			rollers[i].paint(ctx,true);
 		}
 	}
-	if(path.length>2 && path[path.length-1].type=="arc" && path[0].type=="line"){
-		path[path.length-1].end = path[0].start;
-		path[path.length-1].end_angle = path[0].start.get_vector(path[path.length-1].circle.center).get_angle();
-		path[path.length-1].end_deg = path[0].start.get_vector(path[path.length-1].circle.center).get_angle()*rad2deg;
+
+	var paint_path=function(ctx){
+		var path=this.path;
+		for(var i=0;i<=path.length-1;i++){
+			var pe=path[i];
+			if (pe.type=='line'){
+				pe.start.paint(ctx);
+				pe.end.paint(ctx);
+				pe.end.get_vector(pe.start).paint_at(ctx, pe.start);
+			}
+		}
 	}
-	console.log(path);
 
 	go_layer2();
 
-	ctx.strokeStyle = '#0f0';
-	ctx.fillStyle = '#5f5';
-	ctx.lineWidth = 2;
 
 
-	for(i=0;i<path.length;i++){
-		if (path[i].type=='line') line(path[i].start.x, path[i].start.y, path[i].end.x, path[i].end.y);
-		if (path[i].type=='arc'){
-			arc(
-				path[i].circle.center.x, 
-				path[i].circle.center.y, 
-				path[i].circle.radius, 
-				path[i].circle.direction==1?-path[i].start_angle:-path[i].end_angle,
-				path[i].circle.direction==1?-path[i].end_angle:-path[i].start_angle
-			);
+	var paint_stripe=function(ctx){
+		var tmp_strokeStyle = ctx.strokeStyle;
+		var tmp_lineWidth = ctx.lineWidth;
+		var tmp_fillStyle = ctx.fillStyle;
+		ctx.strokeStyle = '#0f0';
+		ctx.fillStyle = '#5f5';
+		ctx.lineWidth = 6;
+		var path=this.path;
+
+		for(i=0;i<path.length;i++){
+			var pe=path[i];
+			if (pe.type=='line') pe.end.get_vector(pe.start).paint_at(ctx, pe.start, false, false);
+			if (pe.type=='arc') pe.circle.paint_arc(ctx, pe.start_angle, pe.end_angle);
 		}
+		ctx.strokeStyle = tmp_strokeStyle;
+		ctx.lineWidth = tmp_lineWidth;
+		ctx.fillStyle = tmp_fillStyle;
 	}
 
 	go_layer3();
@@ -425,9 +478,11 @@
 	ctx.fillStyle = '#f00';
 	ctx.lineWidth = 3;
 
+	var clear_ctx=function(ctx){
+		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+	}
 
-
-	function pe_length(i0,i1){
+	var pe_length = function(i0,i1){
 		var pe_length=0;
 		for(var i=i0;i<=i1;i++){
 			var pe=path[i];
@@ -435,16 +490,14 @@
 			pe_length = pe_length + pel;
 		}
 		return pe_length;
-	}
+	};
 
-	var stripe_length = pe_length(0, path.length-1);
-	console.log('stripe_length', stripe_length);
-	ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-	function get_stripe_point(q){
+	var get_stripe_point = function (q){
 		var q_=q;
 		var ii=0;
 		var path_point;
+		var path=this.path;
+		path_point = path[0].start;
 		while(q_>0 && ii<path.length){
 			var pe=path[ii];
 			var pel = pe.type=="line"?pe.start.get_vector(pe.end).get_length():pe.circle.get_arc_len(pe.start,pe.end);
@@ -462,15 +515,87 @@
 		return path_point;
 	}
 
+	return {
+		ctxs:ctxs,
+		path:path,
+		rollers:rollers,
+		pe_length:pe_length,
+		clear_ctx:clear_ctx,
+		paint_grid:paint_grid,
+		paint_rollers:paint_rollers,
+		paint_path:paint_path,
+		paint_stripe:paint_stripe,
+		get_stripe_point:get_stripe_point,
+
+		paint:function(ctx){
+			this.clear_ctx(ctx);
+			this.paint_grid(ctx);
+			this.paint_rollers(ctx);
+			this.paint_path(ctx);
+		},
+		paint_piece:function(l0, l1){
+
+		},
+		paint_point:function(ctx,l0){
+			var tmp_strokeStyle = ctx.strokeStyle;
+			var tmp_lineWidth = ctx.lineWidth;
+			var tmp_fillStyle = ctx.fillStyle;
+			ctx.strokeStyle = '#f00';
+			ctx.fillStyle = '#f55';
+			ctx.lineWidth = 6;
+
+			this.get_stripe_point(l0).paint(ctx);
+
+			ctx.strokeStyle = tmp_strokeStyle;
+			ctx.lineWidth = tmp_lineWidth;
+			ctx.fillStyle = tmp_fillStyle;
+
+		},
+		get_stripe_length:function(){
+			return this.pe_length(0, this.path.length-1)
+		}
+	}
+}
+
+
+/*********************************************************/
+/*                    Main                               */
+/*********************************************************/
+
+
+	var container=document.getElementById("container");
+	var cnw=new window.RSH.Conwayer(container, [
+			[85.2, 28.7, 1.000, -1]
+		,	[61.3, 22.4, 1.274, -1]
+		,	[66.0, 25.5, 1.274,  1]
+		,	[13.2, 23.6, 1.024, -1]
+		,	[16.6, 24.9, 0.824,  1]
+		,	[31.5, 28.7, 1.274,  1]
+		,	[26.4, 29.5, 1.274, -1]
+	]);
+	cnw.paint(cnw.ctxs[0]);
+	cnw.paint_stripe(cnw.ctxs[1]);
+
+	cnw.clear_ctx(cnw.ctxs[2]);
+	cnw.paint_point(cnw.ctxs[2],0);
+
+	var stripe_length = cnw.get_stripe_length();
+	console.log('stripe_length', stripe_length);
+
+
+	
+	/* Дальше - баловство с анимацией */
 	var q=0;
 	var times=0;
 	var piece_length=3;
 
+	var ctx= cnw.ctxs[2];
+
 	function repaint_path_element(q){
-		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+		cnw.clear_ctx(ctx);
 		for(qq=q;qq<=q+piece_length;qq=qq+0.05){
-			var path_point = get_stripe_point(qq);
-			if (path_point) path_point.paint();
+			var path_point = cnw.get_stripe_point(qq);
+			if (path_point) path_point.paint(ctx);
 		}
 	}
 
@@ -483,7 +608,6 @@
 	repaint_path_timer(1);
 	//repaint_path_element();
 
-})()
 </script>
 </body>
 </html>
