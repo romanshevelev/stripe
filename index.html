@@ -1,4 +1,8 @@
+<!DOCTYPE html>
 <html>
+	<head>
+		<meta charset="utf-8" />
+	</head>
 <body>
 <div id="container" width="1200" height="800" style="position:absolute;top:0;left:0;height:800px;width:1200px;"></div>
 <script>
@@ -8,38 +12,49 @@ window.rad2deg=360.0/(2*Math.PI);
 window.RSH={};
 
 window.RSH.primitives={
-	line:function(ctx, x0, y0, x1, y1, zoom=1){
+	cx0:0,
+	cy0:0,
+	line:function(ctx, x0, y0, x1, y1, zoom){
+		zoom = typeof zoom !== 'undefined' ? zoom : 1;
 		ctx.beginPath();
 		this.moveTo(ctx, x0, y0, zoom);
 		this.lineTo(ctx, x1, y1, zoom);
 		ctx.stroke();
 	},
-	lineTo:function(ctx, x1, y1, zoom=1){
-		ctx.lineTo(x1*zoom+0.5, y1*zoom+0.5);
+	lineTo:function(ctx, x1, y1, zoom){
+		zoom = typeof zoom !== 'undefined' ? zoom : 1;
+		ctx.lineTo(x1*zoom+0.5-this.cx0*zoom, y1*zoom+0.5-this.cy0*zoom);
 	},
-	moveTo:function(ctx, x0, y0, zoom=1){
-		ctx.moveTo(x0*zoom+0.5, y0*zoom+0.5);
+	moveTo:function(ctx, x0, y0, zoom){
+		zoom = typeof zoom !== 'undefined' ? zoom : 1;
+		ctx.moveTo(x0*zoom+0.5-this.cx0*zoom, y0*zoom+0.5-this.cy0*zoom);
 	},
-	arc:function(ctx, x0, y0, r, a0, a1, zoom=1){
+	arc:function(ctx, x0, y0, r, a0, a1, zoom){
+		zoom = typeof zoom !== 'undefined' ? zoom : 1;
 		ctx.beginPath();
-		ctx.arc(x0*zoom+0.5, y0*zoom+0.5, r*zoom, a0, a1);
+		ctx.arc(x0*zoom+0.5-this.cx0*zoom, y0*zoom+0.5-this.cy0*zoom, r*zoom, a0, a1);
 		ctx.stroke();
 	},
-	pie:function(ctx, x0, y0, r, a0, a1, zoom=1){
+	pie:function(ctx, x0, y0, r, a0, a1, zoom){
+		zoom = typeof zoom !== 'undefined' ? zoom : 1;
 		ctx.beginPath();
-		ctx.arc(x0*zoom+0.5, y0*zoom+0.5, r*zoom, a0, a1);
-		this.lineTo(ctx,x0,y0,zoom);
+		ctx.arc(x0*zoom+0.5-this.cx0*zoom, y0*zoom+0.5-this.cy0*zoom, r*zoom, a0, a1);
+		this.lineTo(ctx, x0, y0, zoom);
 		ctx.fill();
 	},
-	circle:function(ctx, x0, y0, r, zoom=1){
+	circle:function(ctx, x0, y0, r, zoom){
+		zoom = typeof zoom !== 'undefined' ? zoom : 1;
 		this.arc(ctx, x0, y0, r, 0, 2*Math.PI, zoom);
 	},
-	point:function(ctx, x0, y0, zoom=1){
+	point:function(ctx, x0, y0, zoom){
+		zoom = typeof zoom !== 'undefined' ? zoom : 1;
 		ctx.beginPath();
-		ctx.arc(x0*zoom+0.5, y0*zoom+0.5, 2.5, 0, 2*Math.PI);
+		ctx.arc(x0*zoom+0.5-this.cx0*zoom, y0*zoom+0.5-this.cy0*zoom, 2, 0, 2*Math.PI);
+		ctx.stroke();
 		ctx.fill();
 	},
-	triangle:function(ctx, x0, y0, x1, y1, x2, y2, zoom=1){
+	triangle:function(ctx, x0, y0, x1, y1, x2, y2, zoom){
+		zoom = typeof zoom !== 'undefined' ? zoom : 1;
 		ctx.beginPath();
 		this.moveTo(ctx, x0, y0, zoom);
 		this.lineTo(ctx, x1, y1, zoom);
@@ -48,7 +63,8 @@ window.RSH.primitives={
 	}
 }
 
-window.RSH.Point=function(x_,y_,zoom_=1){
+window.RSH.Point=function(x_,y_,zoom_){
+		zoom_ = typeof zoom_ !== 'undefined' ? zoom_ : 1;
 		this.x=x_;
 		this.y=y_;
 		this.zoom=zoom_;
@@ -67,7 +83,10 @@ window.RSH.Point=function(x_,y_,zoom_=1){
 			}
 		}
 	}
-window.RSH.Vector=function(dx_=1.0, dy_=0.0, zoom_=1){
+window.RSH.Vector=function(dx_, dy_, zoom_){
+		dx_ = typeof dx_ !== 'undefined' ? dx_ : 1.0;
+		dy_ = typeof dy_ !== 'undefined' ? dy_ : 0.0;
+		zoom_ = typeof zoom_ !== 'undefined' ? zoom_ : 1;
 		this.dx=dx_;
 		this.dy=dy_;
 		this.zoom=zoom_;
@@ -121,14 +140,17 @@ window.RSH.Vector=function(dx_=1.0, dy_=0.0, zoom_=1){
 				var l0=this.get_length();
 				return new window.RSH.Vector(this.dx*l/l0, this.dy*l/l0, this.zoom);
 			},
-			paint_at:function(ctx, p0, pf=false, af=true){
+			paint_at:function(ctx, p0, pf, af){
+				pf = typeof pf !== 'undefined' ? pf : false;
+				af = typeof af !== 'undefined' ? af : true;
+
 				if (pf) p0.paint(ctx);
 				window.RSH.primitives.line(ctx, p0.x, p0.y, p0.x+this.dx, p0.y+this.dy, this.zoom);
 
 				if (af) {
 					var p1=p0.add_vector(this);
-					var v1=this.reverse().set_length(0.5).add_angle(-17/rad2deg);
-					var v2=this.reverse().set_length(0.5).add_angle(17/rad2deg);
+					var v1=this.reverse().set_length(13/this.zoom).add_angle(-17/rad2deg);
+					var v2=this.reverse().set_length(13/this.zoom).add_angle(17/rad2deg);
 					window.RSH.primitives.triangle(ctx, p1.x, p1.y, p1.x+v1.dx, p1.y+v1.dy, p1.x+v2.dx, p1.y+v2.dy, this.zoom);
 				}
 			},
@@ -147,13 +169,16 @@ window.RSH.Vector=function(dx_=1.0, dy_=0.0, zoom_=1){
 		}
 	}
 
-window.RSH.Circle=function(p0, r, d=1, zoom_, debug_ctx_){
+window.RSH.Circle=function(p0, r, d, zoom_, debug_ctx_){
+		d = typeof d !== 'undefined' ? d : 1;
+
 		var Point = window.RSH.Point;
 		var Vector = window.RSH.Vector;
 		this.center = new Point(p0.x, p0.y, zoom_);
 		this.radius = r;
 		this.direction = d;
 		this.zoom=zoom_;
+		this.engined = false;
 
 		var elem3=document.getElementById("layer2");
 		if (elem3 && elem3.getContext) {
@@ -168,27 +193,52 @@ window.RSH.Circle=function(p0, r, d=1, zoom_, debug_ctx_){
 			center:this.center,
 			radius:this.radius,
 			direction:this.direction,
-			paint:function(ctx, d=false){
-				window.RSH.primitives.circle(ctx, this.center.x, this.center.y, this.radius, this.zoom);
-				if (d) {
-					window.RSH.primitives.arc(ctx, this.center.x, this.center.y, 0.5, -pi2/2+this.direction*pi2/2, 2.5*pi2+pi2/2*this.direction, this.zoom);
-					var p = new Point(this.center.x, this.center.y-0.5, this.zoom);
-					new Vector(this.direction,0, this.zoom).multi(0.3).paint_at(ctx, p);
+			engined:this.engined,
+			paint:function(ctx, d){
+				d = typeof d !== 'undefined' ? d : false;
+				if (this.engined){
+					var tmp_fillStyle=ctx.fillStyle;
+					var tmp_strokeStyle=ctx.strokeStyle;
+					ctx.fillStyle='#999';
+					ctx.strokeStyle='#999';
+					window.RSH.primitives.pie(ctx, this.center.x, this.center.y, this.radius, 0.5*pi2, 1.5*pi2, this.zoom);
+					window.RSH.primitives.pie(ctx, this.center.x, this.center.y, this.radius, 2.5*pi2, 3.5*pi2, this.zoom);
+					ctx.fillStyle=tmp_fillStyle;
+					ctx.strokeStyle=tmp_strokeStyle;
 				}
+				if (d) {
+					var tmp_fillStyle=ctx.fillStyle;
+					var tmp_strokeStyle=ctx.strokeStyle;
+					ctx.fillStyle='#999';
+					ctx.strokeStyle='#999';
+					var arc_array_radius=1.7*this.radius;
+					window.RSH.primitives.arc(ctx, this.center.x, this.center.y, arc_array_radius, -pi2/2+this.direction*pi2/2, 2.5*pi2+pi2/2*this.direction, this.zoom);
+					var p = new Point(this.center.x, this.center.y-arc_array_radius, this.zoom);
+					new Vector(this.direction,0, this.zoom).multi(0.3).paint_at(ctx, p);
+					ctx.fillStyle=tmp_fillStyle;
+					ctx.strokeStyle=tmp_strokeStyle;
+				}
+				window.RSH.primitives.circle(ctx, this.center.x, this.center.y, this.radius, this.zoom);
+				window.RSH.primitives.point(ctx, this.center.x, this.center.y, this.zoom);
 				return this;
 			},
-			get_path_angle:function(l, a0=0){
+			set_engined:function(engined_){
+				this.engined=engined_;
+			},
+			get_path_angle:function(l, a0){
+				a0 = typeof a0 !== 'undefined' ? a0 : 0;
 				return l/this.radius + a0;
 			},
 			get_point_angle:function(p){
 				return p.get_vector(this.center).get_angle();
 			},
-			get_arc_len:function(p0, p1, debug=false){
+			get_arc_len:function(p0, p1, debug){
+				debug = typeof debug !== 'undefined' ? debug : false;
 				var v0=p0.get_vector(this.center);
 				if (debug) v0.paint_at(debug_ctx, this.center);
 				var v1=p1.get_vector(this.center);
 				if (debug) v1.paint_at(debug_ctx, this.center);
-				
+
 				var a0=v0.get_angle();
 				var a1=v1.get_angle();
 				if (debug) this.paint_arc(debug_ctx, a0,a1);
@@ -210,7 +260,8 @@ window.RSH.Circle=function(p0, r, d=1, zoom_, debug_ctx_){
 					window.RSH.primitives.arc(ctx, this.center.x, this.center.y, this.radius, -a1, -a0, this.zoom);
 				}
 			},
-			get_tangent_angle:function(p, kd=1){
+			get_tangent_angle:function(p, kd){
+				kd = typeof kd !== 'undefined' ? kd : 1;
 				v2p=this.center.get_vector(p).reverse();
 				l2p = v2p.get_length();
 				return v2p.get_angle()+kd*Math.acos(this.radius/l2p);
@@ -218,7 +269,8 @@ window.RSH.Circle=function(p0, r, d=1, zoom_, debug_ctx_){
 			get_angle_point:function(a){
 				return this.center.add_vector(new Vector(1, 0, this.zoom).set_angle(a).multi(this.radius));
 			},
-			get_tangent_with:function(c0, debug=false){
+			get_tangent_with:function(c0, debug){
+				debug = typeof debug !== 'undefined' ? debug : false;
 				var Circle = window.RSH.Circle;
 				var ctx=this.debug_ctx;
 				var tmp_strokeStyle = ctx.strokeStyle;
@@ -294,8 +346,13 @@ window.RSH.Circle=function(p0, r, d=1, zoom_, debug_ctx_){
 		};
 	}
 
-window.RSH.Conwayer=function(container, roller_coords){
+window.RSH.Conwayer=function(container, roller_coords, zoom, cx0, cy0){
 
+	zoom = typeof zoom !== 'undefined' ? zoom : 20;
+	cx0 = typeof cx0 !== 'undefined' ? cx0 : 0;
+	cy0 = typeof cy0 !== 'undefined' ? cy0 : 0;
+	window.RSH.primitives.cx0 = cx0;
+	window.RSH.primitives.cy0 = cy0;
 	var rad2deg=360.0/(2*Math.PI);
 	var pi2=Math.PI/2;
 
@@ -304,11 +361,11 @@ window.RSH.Conwayer=function(container, roller_coords){
 		elem.id=id;
 		elem.height=container.clientHeight;
 		elem.width=container.clientWidth;
-		elem.style="position:absolute;top:0px;left:0px;";
+		elem.style.cssText="position:absolute;top:0px;left:0px;";
 		container.appendChild(elem);
 		return elem.getContext('2d');
 	}
-	
+
 	var ctxs=[];
 	ctxs[0] = get_ctx(container,"layer0");
 	ctxs[1] = get_ctx(container,"layer1");
@@ -322,16 +379,13 @@ window.RSH.Conwayer=function(container, roller_coords){
 	function go_layer2(){ctx=ctxs[1];}
 	function go_layer3(){ctx=ctxs[2];}
 
-
-	var zoom=13;
-
 	var paint_grid=function(ctx){
 		var tmp_strokeStyle=ctx.strokeStyle;
 		var tmp_lineWidth = ctx.lineWidth;
 		// Рамка
 		ctx.lineWidth = 1;
 		ctx.strokeStyle = '#555';
-		ctx.strokeRect(0.5, 0.5, ctx.canvas.clientWidth-0.5, ctx.canvas.clientHeight-0.5);
+		//ctx.strokeRect(0.5, 0.5, ctx.canvas.clientWidth-0.5, ctx.canvas.clientHeight-0.5);
 
 		// Сетка
 		ctx.strokeStyle = '#ccc';
@@ -382,8 +436,11 @@ window.RSH.Conwayer=function(container, roller_coords){
 	][2]
 	*/
 	var rollers=[];
-	for (var i=0;i<=roller_coords.length-1;i++)
-		rollers.push(new Circle(new Point(roller_coords[i][0], roller_coords[i][1], zoom), roller_coords[i][2], roller_coords[i][3], zoom))
+	for (var i=0;i<=roller_coords.length-1;i++){
+		var roller = new Circle(new Point(roller_coords[i][0], roller_coords[i][1], zoom), roller_coords[i][2], roller_coords[i][3], zoom);
+		roller.set_engined(roller_coords[i][4]);
+		rollers.push(roller);
+	}
 
 	var path=[];
 
@@ -425,7 +482,7 @@ window.RSH.Conwayer=function(container, roller_coords){
 		}
 		return path;
 	};
-	
+
 	var path=fill_path(rollers);
 	console.log(path);
 
@@ -449,17 +506,25 @@ window.RSH.Conwayer=function(container, roller_coords){
 		}
 	}
 
-	go_layer2();
+	var get_ctx_style = function(ctx){
+		return{
+			strokeStyle:ctx.strokeStyle,
+			lineWidth:ctx.lineWidth,
+			fillStyle:ctx.fillStyle
+		}
+	}
 
-
+	var set_ctx_style = function(ctx, style){
+		ctx.strokeStyle = style.strokeStyle;
+		ctx.lineWidth = style.lineWidth;
+		ctx.fillStyle = style.fillStyle;
+	}
 
 	var paint_stripe=function(ctx){
-		var tmp_strokeStyle = ctx.strokeStyle;
-		var tmp_lineWidth = ctx.lineWidth;
-		var tmp_fillStyle = ctx.fillStyle;
+		var tmp=this.get_ctx_style(ctx);
 		ctx.strokeStyle = '#0f0';
 		ctx.fillStyle = '#5f5';
-		ctx.lineWidth = 6;
+		ctx.lineWidth = 4;
 		var path=this.path;
 
 		for(i=0;i<path.length;i++){
@@ -467,15 +532,13 @@ window.RSH.Conwayer=function(container, roller_coords){
 			if (pe.type=='line') pe.end.get_vector(pe.start).paint_at(ctx, pe.start, false, false);
 			if (pe.type=='arc') pe.circle.paint_arc(ctx, pe.start_angle, pe.end_angle);
 		}
-		ctx.strokeStyle = tmp_strokeStyle;
-		ctx.lineWidth = tmp_lineWidth;
-		ctx.fillStyle = tmp_fillStyle;
+		this.set_ctx_style(ctx, tmp);
 	}
 
 	go_layer3();
 
-	ctx.strokeStyle = '#f00';
-	ctx.fillStyle = '#f00';
+	ctx.strokeStyle = '#00f';
+	ctx.fillStyle = '#99f';
 	ctx.lineWidth = 3;
 
 	var clear_ctx=function(ctx){
@@ -493,6 +556,9 @@ window.RSH.Conwayer=function(container, roller_coords){
 	};
 
 	var get_stripe_point = function (q){
+		var stripe_length=this.get_stripe_length();
+		if (q<0) q=q+stripe_length;
+		if (q>stripe_length) q=q-stripe_length;
 		var q_=q;
 		var ii=0;
 		var path_point;
@@ -515,8 +581,92 @@ window.RSH.Conwayer=function(container, roller_coords){
 		return path_point;
 	}
 
+	var get_point_properties = function(l, dl, debug, debug_ctx){
+		debug = typeof debug !== 'undefined' ? debug : false;
+
+		if (l<0) l=l+this.get_stripe_length();
+		var q_=l;
+		var ii=0;
+		var path_point;
+		var path=this.path;
+		var path_element=path[0];
+		path_point = path_element.start;
+		while(q_>0 && ii<path.length){
+			path_element=path[ii];
+			var pel = path_element.type=="line"?path_element.start.get_vector(path_element.end).get_length():path_element.circle.get_arc_len(path_element.start,path_element.end);
+			if (q_>pel){
+				q_=q_-pel;
+				ii++;
+				if (ii>=path.length) ii = ii - path.length;
+			} else {
+				path_point = path_element.type=="line"?
+					path_element.start.add_vector(path_element.end.get_vector(path_element.start).set_length(q_))
+				: 	path_element.circle.center.add_vector(path_element.start.get_vector(path_element.circle.center).add_angle(-path_element.circle.direction*q_/path_element.circle.radius))
+			;
+				q_=0;
+			}
+		}
+		var path_element=path[ii];
+		var p0=this.get_stripe_point(l-dl);
+		var p1=this.get_stripe_point(l+dl);
+		var v0=p0.get_vector(path_point);
+		var v1=p1.get_vector(path_point);
+		var v2=p1.get_vector(p0).add_angle(-pi2);
+		var beta=0;
+		if (path_element.type=='arc'){
+			beta=2*dl/path_element.circle.radius;
+		}
+		if (debug){
+			var debug_vectors_length=100/path_element.start.zoom;
+			var ctx=debug_ctx;
+			var tmp=this.get_ctx_style(ctx);
+
+			ctx.strokeStyle = '#f00';
+			ctx.fillStyle = '#f00';
+			ctx.lineWidth = 1;
+
+			this.clear_ctx(ctx);
+			path_point.paint(ctx);
+
+			p0.paint(ctx);
+			p1.paint(ctx);
+
+			v2 = v2.set_length(debug_vectors_length);
+
+			if (path_element.type=='arc'){
+				var nv=path_point.get_vector(path_element.circle.center).set_length(debug_vectors_length);
+				var nv0=nv.add_angle(-0.5*beta).set_length(path_element.circle.radius + debug_vectors_length);
+				var nv1=nv.add_angle(0.5*beta).set_length(path_element.circle.radius + debug_vectors_length);
+				nv0.paint_at(ctx, path_element.circle.center);
+				nv1.paint_at(ctx, path_element.circle.center);
+				v2.paint_at(ctx, path_point);
+			} else {
+				v2.paint_at(ctx, path_point);
+			}
+
+			this.set_ctx_style(ctx, tmp);
+		}
+		return {
+			path_point:path_point,
+			path_element:path_element,
+			center_angle:v2.get_angle(),
+			beta:beta
+		};
+	}
+	var write_text = function(ctx, l, text){
+		var lineHeight=24;
+		ctx.font = '14pt "Arial Cyr"';
+		ctx.textBaseline = "bottom";
+		var metrics = ctx.measureText(text);
+		ctx.clearRect(0, l*lineHeight+l*lineHeight/4+0.5, ctx.canvas.clientWidth, lineHeight);
+		//ctx.strokeRect(0, l*lineHeight+l*lineHeight/4+0.5, ctx.canvas.clientWidth, lineHeight);
+		ctx.fillText(text, 20, l*lineHeight+lineHeight+l*lineHeight/4);
+	}
+
 	return {
 		ctxs:ctxs,
+		get_ctx_style:get_ctx_style,
+		set_ctx_style:set_ctx_style,
 		path:path,
 		rollers:rollers,
 		pe_length:pe_length,
@@ -526,6 +676,8 @@ window.RSH.Conwayer=function(container, roller_coords){
 		paint_path:paint_path,
 		paint_stripe:paint_stripe,
 		get_stripe_point:get_stripe_point,
+		get_point_properties:get_point_properties,
+		write_text:write_text,
 
 		paint:function(ctx){
 			this.clear_ctx(ctx);
@@ -537,19 +689,14 @@ window.RSH.Conwayer=function(container, roller_coords){
 
 		},
 		paint_point:function(ctx,l0){
-			var tmp_strokeStyle = ctx.strokeStyle;
-			var tmp_lineWidth = ctx.lineWidth;
-			var tmp_fillStyle = ctx.fillStyle;
-			ctx.strokeStyle = '#f00';
-			ctx.fillStyle = '#f55';
-			ctx.lineWidth = 6;
+			var tmp = this.get_ctx_style(ctx);
+			ctx.strokeStyle = '#00f';
+			ctx.fillStyle = '#59f';
+			ctx.lineWidth = 1;
 
 			this.get_stripe_point(l0).paint(ctx);
 
-			ctx.strokeStyle = tmp_strokeStyle;
-			ctx.lineWidth = tmp_lineWidth;
-			ctx.fillStyle = tmp_fillStyle;
-
+			this.set_ctx_style(ctx, tmp);
 		},
 		get_stripe_length:function(){
 			return this.pe_length(0, this.path.length-1)
@@ -565,49 +712,73 @@ window.RSH.Conwayer=function(container, roller_coords){
 
 	var container=document.getElementById("container");
 	var cnw=new window.RSH.Conwayer(container, [
-			[85.2, 28.7, 1.000, -1]
-		,	[61.3, 22.4, 1.274, -1]
-		,	[66.0, 25.5, 1.274,  1]
-		,	[13.2, 23.6, 1.024, -1]
-		,	[16.6, 24.9, 0.824,  1]
-		,	[31.5, 28.7, 1.274,  1]
-		,	[26.4, 29.5, 1.274, -1]
-	]);
+			[85.2, 28.7, 1.000, -1, false]
+		,	[61.3, 22.4, 1.274, -1, true]
+		,	[66.0, 25.5, 1.274,  1, true ]
+		,	[13.2, 23.6, 1.024, -1, false]
+		,	[16.6, 24.9, 0.824,  1, false]
+		,	[31.5, 28.7, 1.274,  1, true]
+		,	[26.4, 29.5, 1.274, -1, true]
+	// ], 45, 10, 17);
+	], 13, 5, 0);
 	cnw.paint(cnw.ctxs[0]);
 	cnw.paint_stripe(cnw.ctxs[1]);
 
 	cnw.clear_ctx(cnw.ctxs[2]);
-	cnw.paint_point(cnw.ctxs[2],0);
+	//cnw.paint_point(cnw.ctxs[2],0);
 
 	var stripe_length = cnw.get_stripe_length();
+	var pieces_count=200; //4000
+	var piece_length=stripe_length/pieces_count;
+
 	console.log('stripe_length', stripe_length);
+	cnw.write_text(cnw.ctxs[0],1, 'Длина ленты = '+stripe_length.toFixed(3)+', длина отрезка = '+piece_length.toFixed(8));
 
 
-	
 	/* Дальше - баловство с анимацией */
 	var q=0;
-	var times=0;
-	var piece_length=3;
 
 	var ctx= cnw.ctxs[2];
 
+	function describe_point_properties(cnw, point_properties){
+		var ctx=cnw.ctxs[3];
+		cnw.write_text(ctx,2, 'Положение точки = '+q.toFixed(3));
+		cnw.write_text(ctx,3, 'Угол наклона = '+(point_properties.center_angle).toFixed(8) + ' (' + (point_properties.center_angle*rad2deg).toFixed(3)+'°)');
+		cnw.write_text(ctx,4, 'Угол между нормалями крайних точек = '+(point_properties.beta).toFixed(8) + ' (' + (point_properties.beta*rad2deg).toFixed(3)+'°)');
+		if (point_properties.path_element.type=='arc'){
+			if (point_properties.path_element.circle.engined){
+				cnw.write_text(ctx,5, 'Центральная точка на ведущем валу');
+			} else {
+				cnw.write_text(ctx,5, 'Центральная точка на ведомом валу');
+			}
+		}else{
+			cnw.write_text(ctx,5, 'Центральная точка на прямой');
+		}
+	}
+
 	function repaint_path_element(q){
 		cnw.clear_ctx(ctx);
-		for(qq=q;qq<=q+piece_length;qq=qq+0.05){
+
+/*
+		for(qq=q-0.5*piece_length;qq<=q+0.5*piece_length;qq=qq+0.05){
 			var path_point = cnw.get_stripe_point(qq);
-			if (path_point) path_point.paint(ctx);
+			if (path_point){
+				path_point.paint(ctx);
+			}
 		}
+*/
+		var point_properties = cnw.get_point_properties(q, 0.5*piece_length, true, cnw.ctxs[3]);
+		describe_point_properties(cnw, point_properties);
 	}
 
 	function repaint_path_timer(qt){
 		q=q+0.1;
 		repaint_path_element(q);
-		if (q<=stripe_length-piece_length) setTimeout(function(){repaint_path_timer(qt);},qt);
+		if (q<=stripe_length) setTimeout(function(){repaint_path_timer(qt);},qt);
 	}
 
-	repaint_path_timer(1);
+	repaint_path_timer(10);
 	//repaint_path_element();
-
 </script>
 </body>
 </html>
