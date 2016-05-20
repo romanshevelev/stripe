@@ -581,8 +581,9 @@ window.RSH.Conwayer=function(container, roller_coords, zoom, cx0, cy0){
 		return path_point;
 	}
 
-	var get_point_properties = function(l, dl, debug, debug_ctx){
+	var get_point_properties = function(l, dl, debug, debug_ctx, clear_ctx_){
 		debug = typeof debug !== 'undefined' ? debug : false;
+		clear_ctx_ = typeof clear_ctx_ !== 'undefined' ? clear_ctx_ : true;
 
 		if (l<0) l=l+this.get_stripe_length();
 		var q_=l;
@@ -625,7 +626,7 @@ window.RSH.Conwayer=function(container, roller_coords, zoom, cx0, cy0){
 			ctx.fillStyle = '#f00';
 			ctx.lineWidth = 1;
 
-			this.clear_ctx(ctx);
+			if (clear_ctx_) this.clear_ctx(ctx);
 			path_point.paint(ctx);
 
 			p0.paint(ctx);
@@ -728,7 +729,7 @@ window.RSH.Conwayer=function(container, roller_coords, zoom, cx0, cy0){
 	//cnw.paint_point(cnw.ctxs[2],0);
 
 	var stripe_length = cnw.get_stripe_length();
-	var pieces_count=200; //4000
+	var pieces_count=4000
 	var piece_length=stripe_length/pieces_count;
 
 	console.log('stripe_length', stripe_length);
@@ -740,6 +741,7 @@ window.RSH.Conwayer=function(container, roller_coords, zoom, cx0, cy0){
 
 	var ctx= cnw.ctxs[2];
 
+	/*
 	function describe_point_properties(cnw, point_properties){
 		var ctx=cnw.ctxs[3];
 		cnw.write_text(ctx,2, 'Положение точки = '+q.toFixed(3));
@@ -756,17 +758,24 @@ window.RSH.Conwayer=function(container, roller_coords, zoom, cx0, cy0){
 		}
 	}
 
+*/
+	console.log(cnw.get_point_properties(10, 0.5*piece_length, true, cnw.ctxs[3],false));
+	console.log(cnw.get_point_properties(26, 0.5*piece_length, true, cnw.ctxs[3],false));
+	console.log(cnw.get_point_properties(32, 0.5*piece_length, true, cnw.ctxs[3],false));
+	console.log(cnw.get_point_properties(60, 0.5*piece_length, true, cnw.ctxs[3],false));
+	console.log(cnw.get_point_properties(93.5, 0.5*piece_length, true, cnw.ctxs[3],false));
+
+
+/*
 	function repaint_path_element(q){
 		cnw.clear_ctx(ctx);
 
-/*
 		for(qq=q-0.5*piece_length;qq<=q+0.5*piece_length;qq=qq+0.05){
 			var path_point = cnw.get_stripe_point(qq);
 			if (path_point){
 				path_point.paint(ctx);
 			}
 		}
-*/
 		var point_properties = cnw.get_point_properties(q, 0.5*piece_length, true, cnw.ctxs[3]);
 		describe_point_properties(cnw, point_properties);
 	}
@@ -776,9 +785,9 @@ window.RSH.Conwayer=function(container, roller_coords, zoom, cx0, cy0){
 		repaint_path_element(q);
 		if (q<=stripe_length) setTimeout(function(){repaint_path_timer(qt);},qt);
 	}
-
 	repaint_path_timer(10);
-	//repaint_path_element();
+	repaint_path_element();
+*/
 </script>
 </body>
 </html>
