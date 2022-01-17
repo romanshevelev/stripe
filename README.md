@@ -1,3 +1,3 @@
 "# stripe" 
 Предпросмотр:
-https://htmlpreview.github.io/?https://github.com/romanshevelev/stripe/blob/master/index.html
+https://romanshevelev.github.io/stripe.html
